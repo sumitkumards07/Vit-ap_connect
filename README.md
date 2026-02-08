@@ -1,16 +1,46 @@
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# VIT-AP Connect (Student Bumble Clone)
 
-Currently, two official plugins are available:
+This is a React matching app for VIT-AP students, built with Vite and Tailwind CSS.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Getting Started
 
-## React Compiler
+1.  **Install Dependencies:**
+    ```bash
+    npm install
+    ```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2.  **Run Development Server:**
+    ```bash
+    npm run dev
+    ```
 
-## Expanding the ESLint configuration
+3.  **Build for Production:**
+    ```bash
+    npm run build
+    ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Deployment Instructions
+
+### 1. Push to GitHub
+
+1.  Create a new repository on GitHub (e.g., `student-bumble`).
+2.  Run the following commands in your terminal (inside the `student-bumble` folder):
+
+    ```bash
+    git remote add origin https://github.com/YOUR_USERNAME/student-bumble.git
+    git branch -M main
+    git push -u origin main
+    ```
+
+### 2. Deploy to Render
+
+1.  Log in to [Render.com](https://render.com).
+2.  Click **New +** -> **Static Site**.
+3.  Connect your GitHub repository (`student-bumble`).
+4.  Use the following settings:
+    -   **Build Command:** `npm run build`
+    -   **Publish Directory:** `dist`
+5.  Click **Create Static Site**.
+
+Your app will be live in a few minutes!

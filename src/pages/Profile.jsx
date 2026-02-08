@@ -1,14 +1,51 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MOCK_PROFILES } from '../data/mockData';
+import { supabase } from '../supabaseClient';
+// import { MOCK_PROFILES } from '../data/mockData'; // Removed mock
 
 export default function Profile() {
     const { id } = useParams();
     const navigate = useNavigate();
-    // Handle "me" profile separate logic or just mock it as id 1
-    const profileId = id === 'me' ? 1 : parseInt(id);
-    const profile = MOCK_PROFILES.find(p => p.id === profileId) || MOCK_PROFILES[0]; // fallback
+    const [profile, setProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchProfile();
+    }, [id]);
+
+    const fetchProfile = async () => {
+        try {
+            // If 'me', get current user's profile
+            if (id === 'me') {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+                    setProfile(data);
+                }
+            } else {
+                const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single();
+                if (error) throw error;
+                setProfile(data);
+            }
+        } catch (error) {
+            console.error("Error fetching profile", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) return <div className="p-10 text-center text-white">Loading...</div>;
+    if (!profile) return <div className="p-10 text-center text-white">Profile not found</div>;
+
+    // Use DB fields or fallback
+    const displayProfile = {
+        ...profile,
+        name: profile.full_name?.split(' ')[0] || 'Student',
+        image: profile.avatar_url || 'https://via.placeholder.com/400x600',
+        interests: profile.interests || [],
+        lookingFor: profile.looking_for || [] // Ensure column mapping matches
+    };
 
     return (
         <div className="bg-background-light dark:bg-background-dark font-display text-gray-900 dark:text-white overflow-x-hidden antialiased selection:bg-primary selection:text-white">
@@ -17,7 +54,7 @@ export default function Profile() {
                 <div className="relative h-[55vh] w-full shrink-0">
                     <div
                         className="absolute inset-0 bg-cover bg-center"
-                        style={{ backgroundImage: `url('${profile.image}')` }}
+                        style={{ backgroundImage: `url('${displayProfile.image}')` }}
                     ></div>
                     {/* Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-background-dark"></div>
@@ -38,8 +75,8 @@ export default function Profile() {
                     {/* Content Overlap Area */}
                     <div className="absolute bottom-0 w-full px-5 pb-8 flex flex-col justify-end z-10">
                         <div className="flex items-center gap-2 mb-1">
-                            <h1 className="text-4xl font-extrabold tracking-tight text-white drop-shadow-lg">{profile.name}, {profile.age}</h1>
-                            {profile.verified && (
+                            <h1 className="text-4xl font-extrabold tracking-tight text-white drop-shadow-lg">{displayProfile.name}, {displayProfile.age}</h1>
+                            {displayProfile.verified && (
                                 <span className="material-symbols-outlined text-blue-400 bg-white rounded-full text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
                             )}
                         </div>
@@ -57,34 +94,34 @@ export default function Profile() {
                     <div className="flex flex-wrap gap-3">
                         <div className="flex items-center gap-2 bg-surface-dark/80 backdrop-blur-sm border border-white/5 px-4 py-2 rounded-full">
                             <span className="material-symbols-outlined text-primary text-[20px]">school</span>
-                            <span className="text-sm font-semibold text-white">{profile.major}</span>
+                            <span className="text-sm font-semibold text-white">{displayProfile.major}</span>
                         </div>
                         <div className="flex items-center gap-2 bg-surface-dark/80 backdrop-blur-sm border border-white/5 px-4 py-2 rounded-full">
                             <span className="material-symbols-outlined text-primary text-[20px]">apartment</span>
-                            <span className="text-sm font-semibold text-white">{profile.hostel}</span>
+                            <span className="text-sm font-semibold text-white">{displayProfile.hostel}</span>
                         </div>
                         <div className="flex items-center gap-2 bg-surface-dark/80 backdrop-blur-sm border border-white/5 px-4 py-2 rounded-full">
                             <span className="material-symbols-outlined text-primary text-[20px]">calendar_month</span>
-                            <span className="text-sm font-semibold text-white">{profile.year}</span>
+                            <span className="text-sm font-semibold text-white">{displayProfile.year}</span>
                         </div>
                     </div>
 
                     {/* Bio Section */}
-                    {profile.bio && (
+                    {displayProfile.bio && (
                         <div>
                             <h3 className="text-lg font-bold text-white mb-2">About Me</h3>
                             <p className="text-gray-300 leading-relaxed text-[15px]">
-                                {profile.bio}
+                                {displayProfile.bio}
                             </p>
                         </div>
                     )}
 
                     {/* Looking For Section */}
-                    {profile.lookingFor && (
+                    {displayProfile.lookingFor && (
                         <div>
                             <h3 className="text-lg font-bold text-white mb-3">Looking For</h3>
                             <div className="grid grid-cols-2 gap-3">
-                                {profile.lookingFor.map((item, idx) => (
+                                {displayProfile.lookingFor.map((item, idx) => (
                                     <div key={idx} className="flex flex-col items-center justify-center p-4 rounded-xl bg-surface-dark border border-primary/20 hover:border-primary/50 transition-colors group">
                                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-2 group-hover:bg-primary/20 transition-colors">
                                             <span className="material-symbols-outlined text-primary text-[24px]">{item.icon}</span>
@@ -100,10 +137,10 @@ export default function Profile() {
                     <div>
                         <h3 className="text-lg font-bold text-white mb-3 flex justify-between items-center">
                             Top Interests
-                            <span className="text-xs font-normal text-primary bg-primary/10 px-2 py-0.5 rounded-full">Common: {profile.interests.length}</span>
+                            <span className="text-xs font-normal text-primary bg-primary/10 px-2 py-0.5 rounded-full">Common: {displayProfile.interests?.length}</span>
                         </h3>
                         <div className="flex flex-wrap gap-2">
-                            {profile.interests.map((interest, idx) => (
+                            {displayProfile.interests && displayProfile.interests.map((interest, idx) => (
                                 <div key={idx} className="px-5 py-2.5 rounded-full bg-surface-dark border border-primary text-white font-medium text-sm flex items-center gap-2">
                                     <span className="material-symbols-outlined text-[18px]">{interest.icon}</span>
                                     {interest.label}
@@ -113,17 +150,16 @@ export default function Profile() {
                     </div>
 
                     {/* Campus Life / Gallery */}
-                    {profile.gallery && profile.gallery.length > 0 && (
+                    {displayProfile.gallery && displayProfile.gallery.length > 0 && (
                         <div>
                             <h3 className="text-lg font-bold text-white mb-3">Campus Life</h3>
                             <div className="grid grid-cols-3 gap-2 h-32">
                                 <div className="rounded-lg overflow-hidden h-full col-span-2 relative">
-                                    <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${profile.gallery[0]}')` }}></div>
+                                    <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${displayProfile.gallery[0]}')` }}></div>
                                 </div>
-                                {profile.gallery[1] && (
+                                {displayProfile.gallery[1] && (
                                     <div className="rounded-lg overflow-hidden h-full relative">
-                                        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${profile.gallery[1]}')` }}></div>
-                                        {/* +More placeholder if strictly checking length, but simple for now */}
+                                        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${displayProfile.gallery[1]}')` }}></div>
                                     </div>
                                 )}
                             </div>

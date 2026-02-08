@@ -1,11 +1,66 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/start/BottomNav';
-import { MOCK_CHATS } from '../data/mockData';
+import { supabase } from '../supabaseClient';
 
 export default function ChatList() {
     const navigate = useNavigate();
+    const [matches, setMatches] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchMatches();
+    }, []);
+
+    const fetchMatches = async () => {
+        try {
+            // Get current user
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return; // Demo mode empty
+
+            // Fetch matches where user is user1 or user2
+            const { data: matchesData, error } = await supabase
+                .from('matches')
+                .select(`
+                id,
+                created_at,
+                user1:profiles!user1_id(id, full_name, avatar_url),
+                user2:profiles!user2_id(id, full_name, avatar_url),
+                last_message:messages(content, created_at, sender_id)
+            `)
+                .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            // Flatten data for UI
+            const formattedMatches = matchesData.map(match => {
+                const otherUser = match.user1.id === user.id ? match.user2 : match.user1;
+                // Sorting messages usually needs limit in query, but simplified here assuming strict relation
+                // Actually fetching last message via subquery or filtered relation in Supabase is tricky sometimes. 
+                // For now, let's assume we handle messages separately or just show "New Match!" if no messages.
+                const lastMsg = match.last_message?.[0]; // If relation returns array
+
+                return {
+                    id: match.id,
+                    name: otherUser.full_name,
+                    avatar: otherUser.avatar_url || 'https://via.placeholder.com/150',
+                    lastMessage: lastMsg?.content || "New Match!",
+                    time: lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now',
+                    unread: 0,
+                    online: false
+                };
+            });
+
+            setMatches(formattedMatches);
+
+        } catch (error) {
+            console.error("Error fetching matches:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white min-h-screen flex flex-col items-center justify-center overflow-hidden">
@@ -21,20 +76,14 @@ export default function ChatList() {
                             </div>
                             <span className="text-xs font-medium text-slate-500">Likes</span>
                         </div>
-                        {MOCK_CHATS.map(chat => (
-                            <div key={chat.id} className="flex flex-col items-center gap-1 shrink-0 relative">
-                                <div className="w-16 h-16 rounded-full bg-cover bg-center border-2 border-white dark:border-background-dark" style={{ backgroundImage: `url('${chat.avatar}')` }}></div>
-                                {chat.online && <div className="absolute bottom-4 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background-dark rounded-full"></div>}
-                                <span className="text-xs font-medium text-slate-500">{chat.name.split(' ')[0]}</span>
-                            </div>
-                        ))}
+                        {/* Can map generic recent matches here */}
                     </div>
                 </header>
 
                 {/* Chat List */}
                 <div className="flex-1 overflow-y-auto px-4 pb-24 pt-2">
                     <h2 className="text-sm font-bold text-slate-500 dark:text-gray-400 mb-2 uppercase tracking-wider px-2">Recent</h2>
-                    {MOCK_CHATS.map(chat => (
+                    {loading ? <div className="text-center p-4">Loading...</div> : matches.map(chat => (
                         <div
                             key={chat.id}
                             onClick={() => navigate(`/chat/${chat.id}`)}
@@ -60,6 +109,9 @@ export default function ChatList() {
                             )}
                         </div>
                     ))}
+                    {!loading && matches.length === 0 && (
+                        <div className="text-center p-10 text-slate-500">No matches yet. Go swipe!</div>
+                    )}
                 </div>
 
                 <BottomNav />

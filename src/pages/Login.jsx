@@ -1,12 +1,44 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 export default function Login() {
     const navigate = useNavigate();
+    const [email, setEmail] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
 
-    const handleLogin = () => {
-        // Navigate to discovery page
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setMessage('');
+
+        if (!email.endsWith('@vitap.ac.in')) {
+            setLoading(false);
+            setMessage('Please use your @vitap.ac.in email address.');
+            return;
+        }
+
+        try {
+            const { error } = await supabase.auth.signInWithOtp({
+                email,
+                options: {
+                    emailRedirectTo: window.location.origin,
+                },
+            });
+
+            if (error) throw error;
+            setMessage('Check your email for the login link!');
+        } catch (error) {
+            setMessage(error.error_description || error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Dev bypass for testing without keys
+    const handleDevBypass = () => {
         navigate('/discover');
     };
 
@@ -62,16 +94,33 @@ export default function Login() {
                 {/* Action Section */}
                 <div className="px-6 pb-10 pt-4 w-full">
                     <div className="flex flex-col gap-4">
+                        {/* Email Input */}
+                        <input
+                            type="email"
+                            placeholder="your.name@vitap.ac.in"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 transition-colors"
+                        />
+
                         {/* Sign In Button */}
                         <button
                             onClick={handleLogin}
-                            className="group relative flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 bg-primary text-white shadow-[0_0_20px_rgba(238,43,140,0.3)] transition-all active:scale-[0.98] hover:shadow-[0_0_30px_rgba(238,43,140,0.5)]"
+                            disabled={loading}
+                            className="group relative flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 bg-primary text-white shadow-[0_0_20px_rgba(238,43,140,0.3)] transition-all active:scale-[0.98] hover:shadow-[0_0_30px_rgba(238,43,140,0.5)] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <div className="absolute inset-0 bg-white/20 translate-y-full transition-transform group-hover:translate-y-0"></div>
                             <div className="relative flex items-center gap-3">
-                                <span className="material-symbols-outlined">mail</span>
-                                <span className="text-lg font-bold tracking-wide">Sign in with Student Email</span>
+                                <span className="material-symbols-outlined">{loading ? 'progress_activity' : 'mail'}</span>
+                                <span className="text-lg font-bold tracking-wide">{loading ? 'Sending Magic Link' : 'Sign in with Student Email'}</span>
                             </div>
+                        </button>
+
+                        {message && <p className="text-center text-sm font-medium text-white">{message}</p>}
+
+                        {/* Dev Bypass (Temporary) */}
+                        <button onClick={handleDevBypass} className="text-xs text-gray-600 hover:text-gray-400">
+                            (Dev: Skip Login)
                         </button>
 
                         {/* Helper Text */}
